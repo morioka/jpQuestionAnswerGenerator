@@ -88,21 +88,24 @@ class QAGeneration:
         if (bform_tag[0] == u"助詞" and bform_tag[1] == u"格助詞"
             and (bform_surface in set([u"ガ", u"ヲ", u"ニ", u"ト", u"デ", u"カラ", u"ヨリ", u"ヘ", u"マデ"]))):
             
-            if bhead_tag[1] == u"代名詞" \
-                or (bhead_tag[0] == u"名詞" and bhead_tag[1] == u"接尾"):
-                # 代名詞かさん
-                return True, "agent"
-            elif bform_surface == u"ニ" and \
-                (node['ne'][node['bhead']] == u"B-DATE" or \
-                    (bhead_tag[1] == u"接尾" and bhead_tag[-1] == u"ジ")):
-                #  「９時に」の場合、時は時間の固有名詞として認識されないようなので、featureに「ジ」があれば時間として扱う
-                # time
-                return True, "time"
-            elif bform_surface == u"デ" and \
-                (node['ne'][node['bhead']] == u"B-LOCATION" or bhead_tag[0] == u"名詞"):
-                # place
-                return True, "place"
-            else:
+            try:  # @neが取れないらしい場合に関連して IndexErrorを生じることがある
+                if bhead_tag[1] == u"代名詞" \
+                    or (bhead_tag[0] == u"名詞" and bhead_tag[1] == u"接尾"):
+                    # 代名詞かさん
+                    return True, "agent"
+                elif bform_surface == u"ニ" and \
+                    (node['ne'][node['bhead']] == u"B-DATE" or \
+                        (bhead_tag[1] == u"接尾" and bhead_tag[-1] == u"ジ")):
+                    #  「９時に」の場合、時は時間の固有名詞として認識されないようなので、featureに「ジ」があれば時間として扱う
+                    # time
+                    return True, "time"
+                elif bform_surface == u"デ" and \
+                    (node['ne'][node['bhead']] == u"B-LOCATION" or bhead_tag[0] == u"名詞"):
+                    # place
+                    return True, "place"
+                else:
+                    return True, bform_surface
+            except IndexError:
                 return True, bform_surface
         elif bhead_tag[0] == u"名詞" and bform_tag[0:2] == [u"名詞", u"接尾"]:
             return True, u"名詞接尾"
@@ -152,13 +155,15 @@ class QAGeneration:
                 continue
 
             chunk_id = int(chunk["@id"])
-
+            # print( chunk["tok"])  # 例文で確認する限り、固有表現マーカ? @ne は出現しない
             if isinstance(chunk["tok"], list):
                 # #textが取れない場合があるので、取れるtokenのみからlistを作る
                 tokens = [token["#text"] for token in chunk["tok"] if "#text" in token]
                 tokens_feature = [token["@feature"] for token in chunk["tok"]]
                 # named entity
-                tokens_ne = [token["@ne"] for token in chunk["tok"]]
+                # @neが取れない場合があるらしいので、取れるtokenのみからlistを作る
+                # tokens_ne = [token["@ne"] for token in chunk["tok"]]
+                tokens_ne = [token["@ne"] for token in chunk["tok"] if "@ne" in token]
             else:
                 if "#text" not in chunk["tok"]:
                     continue
