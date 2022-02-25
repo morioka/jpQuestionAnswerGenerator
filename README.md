@@ -15,6 +15,15 @@ Note that I did not implement all patterns for semantic label generation.
 
 ## memo
 
+<pre>
+original text: 外の眺めが綺麗ですね。彼が学校に行きました。今日は大学で勉強します。
+ Q :  何が、綺麗ですねか？
+ A :  外の眺めが
+
+ Q :  誰が、学校に行きましたか？
+ A :  彼が
+</pre>
+
 CaboChaを使えるよう環境設定するのが大変。spacyで書いた形跡があるので、そちらに振ることはできるだろう。
 
 https://notemite.com/python/python-cabocha-on-ubuntu/
