@@ -169,6 +169,8 @@ class QAGeneration:
                     continue
                 tokens = [chunk["tok"]["#text"]]
                 tokens_feature = [chunk["tok"]["@feature"]]
+                if "@ne" not in chunk["tok"]:
+                    continue
                 tokens_ne = [chunk["tok"]["@ne"]]
 
             joined_tokens = "".join(tokens)
