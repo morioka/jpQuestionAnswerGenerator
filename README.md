@@ -10,9 +10,12 @@ This approach contains the following steps:
 
 Note that I did not implement all patterns for semantic label generation.
 
+
+[日本語文書からQ&Aを自動生成してみました #NLP - クリエーションライン株式会社 (2019-05-23)](https://www.creationline.com/blog/j-zhu/27771)
+
 ## memo
 
-CaboChaを使えるようにするのが大変
+CaboChaを使えるよう環境設定するのが大変。spacyで書いた形跡があるので、そちらに振ることはできるだろう。
 
 https://notemite.com/python/python-cabocha-on-ubuntu/
 https://noknow.info/it/os/install_cabocha_from_source?lang=ja
