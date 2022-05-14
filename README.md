@@ -11,12 +11,16 @@ This approach contains the following steps:
 Note that I did not implement all patterns for semantic label generation.
 
 
+## memo
+
+fork 元のコードは、下記の記事に対応するもの。
+
 [日本語文書からQ&Aを自動生成してみました #NLP - クリエーションライン株式会社, by 朱, 2019-05-23](https://www.creationline.com/blog/j-zhu/27771)
 
 あるコードから派生した(/独立した?)いくつかの試みがある様子。
 
 - [GitHub - george-j-zhu/jpQuestionAnswerGenerator: A simple automatic QA generator for Japanese texts](https://github.com/george-j-zhu/jpQuestionAnswerGenerator)
-  - 上記記事のリポジトリ。依存構造解析にCaboCha を用いている。
+  - 上記記事のリポジトリ。このコードのfork元。依存構造解析にCaboCha を用いている。
 - [文書からFAQを自動生成する試み - Qiita, by @yukihon_lab, 2018-11-20](https://qiita.com/yukihon_lab/items/5f494d1a39849071f077)
   - COTOHA-API の構文解析+深層格解析を用いている。それ以外は、上記コードと共通性が高い。
 - [任意のテキストからクイズを作成するWebアプリを作る - Qiita, by @BuniBuni, 2021-09-18](https://qiita.com/BuniBuni/items/047aaad25ddc82c5693b)
@@ -24,7 +28,7 @@ Note that I did not implement all patterns for semantic label generation.
 - [COTOHAでクイズ自動生成 - Qiita, by @zakiyama2918, 2020-02-23](https://qiita.com/zakiyama2918/items/0329e54ef23978a60574)
   - COTOHA-APIを用いて、独自コード
   
-## memo
+### 実行例
 
 <pre>
 original text: 外の眺めが綺麗ですね。彼が学校に行きました。今日は大学で勉強します。
@@ -34,6 +38,8 @@ original text: 外の眺めが綺麗ですね。彼が学校に行きました�
  Q :  誰が、学校に行きましたか？
  A :  彼が
 </pre>
+
+### 環境準備
 
 CaboChaを使えるよう環境設定するのが大変。~~spacyで書いた形跡があるので、そちらに振ることはできるだろう。~~ (spacy/GiNZAで書き直した。後述)
 
