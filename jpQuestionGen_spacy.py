@@ -16,10 +16,6 @@ def spacy_chunk_parser(doc):
     # json に落とし込む
     jsonfile=doc.to_json()
         
-    # 文節情報が入っていないので追加
-    # chunk 相当のspanとして。
-    jsonfile['bunsetu_spans'] = [ {'start': bs.start, 'end': bs.end} for i, bs in enumerate(ginza.bunsetu_spans(doc))]
-
     # 品詞詳細を分解
     for tok in jsonfile['tokens']:
         tok['@feature'] = ",".join(tok['tag'].split('-'))
@@ -65,15 +61,19 @@ def spacy_chunk_parser(doc):
     ## 根では自己参照のため -1
     link_id_list = [ (j if i != j else -1) for i, j in zip(chunk_id_list, link_id_list)]
 
-    ## chunk_id, link_id を設定
-    for chunk, chunk_id, link_id in zip(jsonfile['bunsetu_spans'] , chunk_id_list, link_id_list):
+
+    # 文節情報が入っていないので追加
+    # chunk 相当のspanとして。
+    bunsetu_spans = [ {'start': bs.start, 'end': bs.end} for bs in ginza.bunsetu_spans(doc)]
+
+    ## chunk_id, link_id, tok を設定
+    for chunk, chunk_id, link_id in zip(bunsetu_spans, chunk_id_list, link_id_list):
         chunk['@id'] = str(chunk_id)
         chunk['@link'] = str(link_id)
-
-    # 互換性改善
-    for chunk in jsonfile['bunsetu_spans']:
         chunk["tok"] = jsonfile['tokens'][chunk['start']:chunk['end']]
-    jsonfile["sentence"] = {'chunk': jsonfile['bunsetu_spans']}
+
+    ## 互換性を維持する配置
+    jsonfile["sentence"] = {'chunk': bunsetu_spans}
 
     return jsonfile
 
