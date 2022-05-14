@@ -69,7 +69,12 @@ def spacy_chunk_parser(doc):
     for chunk, chunk_id, link_id in zip(jsonfile['bunsetu_spans'] , chunk_id_list, link_id_list):
         chunk['@id'] = str(chunk_id)
         chunk['@link'] = str(link_id)
-        
+
+    # 互換性改善
+    for chunk in jsonfile['bunsetu_spans']:
+        chunk["tok"] = jsonfile['tokens'][chunk['start']:chunk['end']]
+    jsonfile["sentence"] = {'chunk': jsonfile['bunsetu_spans']}
+
     return jsonfile
 
 class QAGeneration:
@@ -200,13 +205,6 @@ class QAGeneration:
         
         # map of chunks
         node_map = {}
-
-        # 元のコードとの互換性を改善
-        for chunk in jsonfile['bunsetu_spans']:
-            chunk["tok"] = jsonfile['tokens'][chunk['start']:chunk['end']]
-        jsonfile["sentence"] = {}
-        jsonfile["sentence"]["chunk"] = jsonfile["bunsetu_spans"]
-
         for chunk in jsonfile["sentence"]["chunk"]:
 
             if chunk == "@id" or chunk == "@link" \
