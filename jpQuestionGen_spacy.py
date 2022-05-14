@@ -24,11 +24,27 @@ def spacy_chunk_parser(doc):
     for tok in jsonfile['tokens']:
         tok['tag'] = ",".join(tok['tag'].split('-'))
 
-    # 読みを tag (feature) に追加、表層形(surface)を追加
+    # 読み(reading_form)
     for tok, token in zip(jsonfile['tokens'], doc):
         tok['surface'] = token.orth_
+
+    # tag (feature) に読み(reading_form)、表層形(surface)、活用 (inflection) を追加
+    for tok, token in zip(jsonfile['tokens'], doc):
         morph = token.morph.to_dict()['Reading']
-        tok['tag'] = f"{tok['tag']},{morph}"
+        lemma = token.lemma_
+
+        # 活用形
+        try:
+            inflection = ",".join(token.morph.to_dict()['Inflection'].split(';')) + ","
+        except:
+            inflection = ""
+
+        tok['tag'] = f"{tok['tag']},{inflection}{lemma},{morph}"
+
+    # 固有表現
+    for tok, token in zip(jsonfile['tokens'], doc):
+        if token.ent_iob_ == 'B':
+            tok['@ne'] = f'B-{token.ent_type_}'.upper()
     
     # 文節係り受け情報
     ## chunk = 文節とみなす
@@ -187,7 +203,7 @@ class QAGeneration:
             chunk_tokens=jsonfile['tokens'][s:e]
             tokens = [token['surface'] for token in chunk_tokens if 'surface' in token]
             tokens_feature = [token['tag'] for token in chunk_tokens if 'tag' in token]
-            tokens_ne = []
+            tokens_ne = [token["@ne"] for token in chunk_tokens if "@ne" in token]
 
             joined_tokens = "".join(tokens)
             
@@ -376,6 +392,7 @@ if __name__ == "__main__":
     qa_generator = QAGeneration()
 
     org_txt = "外の眺めが綺麗ですね。彼が学校に行きました。今日は大学で勉強します。"
+    org_txt = "外の眺めが綺麗ですね。彼が学校に行きました。今日は大学で勉強します。日本で一番高い山は富士山です。"
     print("original text:", org_txt)
     results = qa_generator.generate_QA(org_txt)
 
