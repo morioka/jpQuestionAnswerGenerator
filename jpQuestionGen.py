@@ -91,7 +91,7 @@ class QAGeneration:
             try:  # @neが取れないらしい場合に関連して IndexErrorを生じることがある
                 if bhead_tag[1] == u"代名詞" \
                     or (bhead_tag[0] == u"名詞" and bhead_tag[1] == u"接尾"):
-                    # 代名詞かさん
+                    # 代名詞加算
                     return True, "agent"
                 elif bform_surface == u"ニ" and \
                     (node['ne'][node['bhead']] == u"B-DATE" or \
