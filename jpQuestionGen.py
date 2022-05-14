@@ -44,7 +44,7 @@ class QAGeneration:
                     if bform == -1: bform = i
                     if not (tags[i][0] == u"助詞"
                         or (tags[i][0] == u"動詞" and tags[i][1] == u"非自立")
-                        or tags[i][0] == "助動詞"):
+                        or tags[i][0] == u"助動詞"):
                         if bhead == -1: bhead = i
 
             node['bhead'] = bhead
@@ -71,7 +71,7 @@ class QAGeneration:
         if bhead_tag[0] == u"動詞":
             return True, u"動詞"
         elif bhead_tag[0] == u"形容詞":
-            return True, "u形容詞"
+            return True, u"形容詞"
         elif bhead_tag[1] == u"形容動詞語幹":
             return True, u"形容詞"
         elif bhead_tag[0] == u"名詞" and bform_tag[0] == u"助動詞":
