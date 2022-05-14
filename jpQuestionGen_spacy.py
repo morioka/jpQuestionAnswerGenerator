@@ -22,11 +22,12 @@ def spacy_chunk_parser(doc):
 
     # 品詞詳細を分解
     for tok in jsonfile['tokens']:
-        tok['tag'] = ",".join(tok['tag'].split('-'))
+        tok['@feature'] = ",".join(tok['tag'].split('-'))
+        del tok['tag']
 
     # 読み(reading_form)
     for tok, token in zip(jsonfile['tokens'], doc):
-        tok['surface'] = token.orth_
+        tok['#text'] = token.orth_
 
     # tag (feature) に読み(reading_form)、表層形(surface)、活用 (inflection) を追加
     for tok, token in zip(jsonfile['tokens'], doc):
@@ -39,13 +40,15 @@ def spacy_chunk_parser(doc):
         except:
             inflection = ""
 
-        tok['tag'] = f"{tok['tag']},{inflection}{lemma},{morph}"
+        tok['@feature'] = f"{tok['@feature']},{inflection}{lemma},{morph}"
 
     # 固有表現
     for tok, token in zip(jsonfile['tokens'], doc):
         if token.ent_iob_ == 'B':
             tok['@ne'] = f'B-{token.ent_type_}'.upper()
-    
+        elif token.ent_iob_ == 'I':
+            tok['@ne'] = f'I-{token.ent_type_}'.upper()
+
     # 文節係り受け情報
     ## chunk = 文節とみなす
     bunsetu_head_tokens = ginza.bunsetu_head_tokens(doc)    # 文節ヘッド
@@ -64,8 +67,8 @@ def spacy_chunk_parser(doc):
 
     ## chunk_id, link_id を設定
     for chunk, chunk_id, link_id in zip(jsonfile['bunsetu_spans'] , chunk_id_list, link_id_list):
-        chunk['chunk_id'] = chunk_id
-        chunk['link_id'] = link_id
+        chunk['@id'] = str(chunk_id)
+        chunk['@link'] = str(link_id)
         
     return jsonfile
 
@@ -197,20 +200,41 @@ class QAGeneration:
         
         # map of chunks
         node_map = {}
-        for chunk in jsonfile['bunsetu_spans']:
-            chunk_id, s, e = chunk['chunk_id'], chunk['start'], chunk['end']
 
-            chunk_tokens=jsonfile['tokens'][s:e]
-            tokens = [token['surface'] for token in chunk_tokens if 'surface' in token]
-            tokens_feature = [token['tag'] for token in chunk_tokens if 'tag' in token]
-            tokens_ne = [token["@ne"] for token in chunk_tokens if "@ne" in token]
+        # 元のコードとの互換性を改善
+        for chunk in jsonfile['bunsetu_spans']:
+            chunk["tok"] = jsonfile['tokens'][chunk['start']:chunk['end']]
+        jsonfile["sentence"] = {}
+        jsonfile["sentence"]["chunk"] = jsonfile["bunsetu_spans"]
+
+        for chunk in jsonfile["sentence"]["chunk"]:
+
+            if chunk == "@id" or chunk == "@link" \
+                or chunk == "@rel" or chunk == "@score" \
+                or chunk == "@head" or chunk == "@func" or chunk == "tok":
+                continue
+
+            chunk_id = int(chunk["@id"])
+            if isinstance(chunk["tok"], list):
+                # #textが取れない場合があるので、取れるtokenのみからlistを作る
+                tokens = [token["#text"] for token in chunk["tok"] if "#text" in token]
+                tokens_feature = [token["@feature"] for token in chunk["tok"]]
+                # named entity
+                # @neが取れない場合があるらしいので、取れるtokenのみからlistを作る
+                # tokens_ne = [token["@ne"] for token in chunk["tok"]]
+                tokens_ne = [token["@ne"] for token in chunk["tok"] if "@ne" in token]
+            else:
+                if "#text" not in chunk["tok"]:
+                    continue
+                tokens = [chunk["tok"]["#text"]]
+                tokens_feature = [chunk["tok"]["@feature"]]
+                tokens_ne = [chunk["tok"]["@ne"]] if "@ne" in chunk["tok"] else []
 
             joined_tokens = "".join(tokens)
             
             chunkid2text[chunk_id] = joined_tokens
 
-            # link_id = int(chunk["@link"])
-            link_id = chunk['link_id']
+            link_id = int(chunk["@link"])
             
             words = tokens
             tags = [feature.split(",") for feature in tokens_feature]
