@@ -6,15 +6,54 @@ import requests
 import pickle
 import numpy as np
 
-#import spacy
-#from spacy.lang.ja_ginza.cli import token_line
+import spacy
+import ginza
 
-import CaboCha
-#from pyknp import Juman
-import xmltodict
-from itertools import groupby
 from operator import itemgetter
 import copy
+
+def spacy_chunk_parser(doc):
+    # json に落とし込む
+    jsonfile=doc.to_json()
+        
+    # 文節情報が入っていないので追加
+    # chunk 相当のspanとして。
+    jsonfile['bunsetu_spans'] = [ {'start': bs.start, 'end': bs.end} for i, bs in enumerate(ginza.bunsetu_spans(doc))]
+
+    # 品詞詳細を分解
+    for tok in jsonfile['tokens']:
+        tok['tag'] = ",".join(tok['tag'].split('-'))
+
+    # 読みを tag (feature) に追加
+    for tok in jsonfile['tokens']:
+        morph = tok['morph']
+        morph = morph[morph.find("Reading="):][len("Reading="):]
+        if len(morph) > 0:
+            tok['tag'] = f"{tok['tag']},{morph}"
+    
+    # 文節係り受け情報
+    # chunk = 文節とみなす
+    bunsetu_head_tokens = ginza.bunsetu_head_tokens(doc)
+    bunsetu_head_list = [tok.i for tok in bunsetu_head_tokens]
+    link_head_list = [ tok.head.i for tok in bunsetu_head_tokens]
+
+    chunk_id_list = list(range(len(bunsetu_head_list)))
+
+    conv_idx = dict()
+    for id, i in zip(bunsetu_head_list, chunk_id_list):
+        conv_idx[id] = i
+
+    link_id_list = [conv_idx[id] for id in link_head_list]
+
+    # 根では自己参照のため -1
+    link_id_list = [ (j if i != j else -1) for i, j in zip(chunk_id_list, link_id_list)]
+
+    # chunk_id, link_id を設定
+    for k, chunk_id, link_id in zip(jsonfile['bunsetu_spans'] , chunk_id_list, link_id_list):
+        k['chunk_id'] = chunk_id
+        k['link_id'] = link_id
+        
+    return jsonfile
 
 class QAGeneration:
     def __init__(self):
@@ -24,10 +63,8 @@ class QAGeneration:
         # extract from node_list
         self.dependencies = list()
         self.chunkid2text = dict()
-        self.cabocha_parser = CaboCha.Parser()
-        #self.jumanpp = Juman()
-        #self.spacy_parser = spacy.load('ja_ginza_nopn')
-        # list for chunks [{"deps":[chunk_link_id_list], "word":[token_name_list], "tag":[token_type_list]}]
+
+        self.spacy_parser = spacy.load('ja_ginza')
 
     def _set_head_form(self, node_map):
 
@@ -44,7 +81,7 @@ class QAGeneration:
                     if bform == -1: bform = i
                     if not (tags[i][0] == u"助詞"
                         or (tags[i][0] == u"動詞" and tags[i][1] == u"非自立")
-                        or tags[i][0] == "助動詞"):
+                        or tags[i][0] == u"助動詞"):
                         if bhead == -1: bhead = i
 
             node['bhead'] = bhead
@@ -56,13 +93,9 @@ class QAGeneration:
 
     def parse(self, doc):
  
-        tree = self.cabocha_parser.parse(doc)
-        xmlstr = tree.toString(CaboCha.FORMAT_XML)
-        try:
-            xml_dict = xmltodict.parse(xmlstr)
-            return xml_dict, True
-        except:
-            return {}, False
+        tree = self.spacy_parser(doc)
+        xml_dict = spacy_chunk_parser(tree)
+        return xml_dict, True
 
     def _is_yogen(self, node):
         bhead_tag = node['tag'][node['bhead']]
@@ -71,8 +104,9 @@ class QAGeneration:
         if bhead_tag[0] == u"動詞":
             return True, u"動詞"
         elif bhead_tag[0] == u"形容詞":
-            return True, "u形容詞"
-        elif bhead_tag[1] == u"形容動詞語幹":
+            return True, u"形容詞"
+        # elif bhead_tag[1] == u"形容動詞語幹":
+        elif bhead_tag[0] == u"形状詞":    # spacy/GiNZAではこれで代用?
             return True, u"形容詞"
         elif bhead_tag[0] == u"名詞" and bform_tag[0] == u"助動詞":
             return True, u"名詞_助動詞"
@@ -90,6 +124,7 @@ class QAGeneration:
             
             try:  # @neが取れないらしい場合に関連して IndexErrorを生じることがある
                 if bhead_tag[1] == u"代名詞" \
+                    or bhead_tag[0] == u"代名詞" \
                     or (bhead_tag[0] == u"名詞" and bhead_tag[1] == u"接尾"):
                     # 代名詞加算
                     return True, "agent"
@@ -120,6 +155,7 @@ class QAGeneration:
             if is_yogen:
                 for case_cand in [node_map[child_id] for child_id in node['deps']]:
                     is_case, case = self._is_case(case_cand)
+                    print("is_case, case, yogen:", is_case, case, yogen)
                     if is_case:
                         # 格（ガ格、ヲ格、ニ格、ト格、デ格、カラ格、ヨリ格、ヘ格、マデ格、無格）＋用言（動詞、形容詞、名詞＋判定詞）形式の文節に意味役割を生成
                         # 全組み合わせに変換対応は難しいが、固定でいくつか対応します。
@@ -147,38 +183,22 @@ class QAGeneration:
         
         # map of chunks
         node_map = {}
-        for chunk in jsonfile["sentence"]["chunk"]:
+        for chunk in jsonfile['bunsetu_spans']:
+            chunk_id, s, e = chunk['chunk_id'], chunk['start'], chunk['end']
 
-            if chunk == "@id" or chunk == "@link" \
-                or chunk == "@rel" or chunk == "@score" \
-                or chunk == "@head" or chunk == "@func" or chunk == "tok":
-                continue
-
-            chunk_id = int(chunk["@id"])
-            # print( chunk["tok"])  # 例文で確認する限り、固有表現マーカ? @ne は出現しない
-            if isinstance(chunk["tok"], list):
-                # #textが取れない場合があるので、取れるtokenのみからlistを作る
-                tokens = [token["#text"] for token in chunk["tok"] if "#text" in token]
-                tokens_feature = [token["@feature"] for token in chunk["tok"]]
-                # named entity
-                # @neが取れない場合があるらしいので、取れるtokenのみからlistを作る
-                # tokens_ne = [token["@ne"] for token in chunk["tok"]]
-                tokens_ne = [token["@ne"] for token in chunk["tok"] if "@ne" in token]
-            else:
-                if "#text" not in chunk["tok"]:
-                    continue
-                tokens = [chunk["tok"]["#text"]]
-                tokens_feature = [chunk["tok"]["@feature"]]
-                if "@ne" not in chunk["tok"]:
-                    continue
-                tokens_ne = [chunk["tok"]["@ne"]]
+            chunk_tokens=jsonfile['tokens'][s:e]
+            # 表層形が見つからないので原形で代用
+            tokens = [token['lemma'] for token in chunk_tokens if 'lemma' in token]
+            tokens_feature = [token['tag'] for token in chunk_tokens if 'tag' in token]
+            tokens_ne = []
 
             joined_tokens = "".join(tokens)
             
             chunkid2text[chunk_id] = joined_tokens
 
-            link_id = int(chunk["@link"])
-
+            # link_id = int(chunk["@link"])
+            link_id = chunk['link_id']
+            
             words = tokens
             tags = [feature.split(",") for feature in tokens_feature]
             nes = tokens_ne
@@ -263,6 +283,8 @@ class QAGeneration:
             node_map = self._extract_case_frame(node_map)
 
             self.dependencies = self._merge_dependencies_and_case_meaning(node_map)
+
+            print(node_map)
 
             qas += self._agent2what_QA()
             qas += self._aobject_ha2what_QA()
