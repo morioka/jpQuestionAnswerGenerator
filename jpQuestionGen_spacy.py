@@ -24,34 +24,32 @@ def spacy_chunk_parser(doc):
     for tok in jsonfile['tokens']:
         tok['tag'] = ",".join(tok['tag'].split('-'))
 
-    # 読みを tag (feature) に追加
-    for tok in jsonfile['tokens']:
-        morph = tok['morph']
-        morph = morph[morph.find("Reading="):][len("Reading="):]
-        if len(morph) > 0:
-            tok['tag'] = f"{tok['tag']},{morph}"
+    # 読みを tag (feature) に追加、表層形(surface)を追加
+    for tok, token in zip(jsonfile['tokens'], doc):
+        tok['surface'] = token.orth_
+        morph = token.morph.to_dict()['Reading']
+        tok['tag'] = f"{tok['tag']},{morph}"
     
     # 文節係り受け情報
-    # chunk = 文節とみなす
-    bunsetu_head_tokens = ginza.bunsetu_head_tokens(doc)
-    bunsetu_head_list = [tok.i for tok in bunsetu_head_tokens]
-    link_head_list = [ tok.head.i for tok in bunsetu_head_tokens]
+    ## chunk = 文節とみなす
+    bunsetu_head_tokens = ginza.bunsetu_head_tokens(doc)    # 文節ヘッド
+    bunsetu_head_list = [tok.i for tok in bunsetu_head_tokens]  # 文節ヘッドのトークンID
+    link_head_list = [ tok.head.i for tok in bunsetu_head_tokens]   # 文節ヘッドの親(=かかり先)のトークンID
 
+    ## 0スタートで詰める
     chunk_id_list = list(range(len(bunsetu_head_list)))
-
     conv_idx = dict()
     for id, i in zip(bunsetu_head_list, chunk_id_list):
         conv_idx[id] = i
-
     link_id_list = [conv_idx[id] for id in link_head_list]
 
-    # 根では自己参照のため -1
+    ## 根では自己参照のため -1
     link_id_list = [ (j if i != j else -1) for i, j in zip(chunk_id_list, link_id_list)]
 
-    # chunk_id, link_id を設定
-    for k, chunk_id, link_id in zip(jsonfile['bunsetu_spans'] , chunk_id_list, link_id_list):
-        k['chunk_id'] = chunk_id
-        k['link_id'] = link_id
+    ## chunk_id, link_id を設定
+    for chunk, chunk_id, link_id in zip(jsonfile['bunsetu_spans'] , chunk_id_list, link_id_list):
+        chunk['chunk_id'] = chunk_id
+        chunk['link_id'] = link_id
         
     return jsonfile
 
@@ -187,8 +185,7 @@ class QAGeneration:
             chunk_id, s, e = chunk['chunk_id'], chunk['start'], chunk['end']
 
             chunk_tokens=jsonfile['tokens'][s:e]
-            # 表層形が見つからないので原形で代用
-            tokens = [token['lemma'] for token in chunk_tokens if 'lemma' in token]
+            tokens = [token['surface'] for token in chunk_tokens if 'surface' in token]
             tokens_feature = [token['tag'] for token in chunk_tokens if 'tag' in token]
             tokens_ne = []
 
