@@ -23,10 +23,22 @@ fork 元のコードは、下記の記事に対応するもの。
   - 上記記事のリポジトリ。このコードのfork元。依存構造解析にCaboCha を用いている。
 - [文書からFAQを自動生成する試み - Qiita, by @yukihon_lab, 2018-11-20](https://qiita.com/yukihon_lab/items/5f494d1a39849071f077)
   - COTOHA-API の構文解析+深層格解析を用いている。それ以外は、上記コードと共通性が高い。
+
+別の試みは日本語か否かを問わずある。
+
 - [任意のテキストからクイズを作成するWebアプリを作る - Qiita, by @BuniBuni, 2021-09-18](https://qiita.com/BuniBuni/items/047aaad25ddc82c5693b)
   - spacy/GiNZAを用いて、独自コード。主語のみ対応。
 - [COTOHAでクイズ自動生成 - Qiita, by @zakiyama2918, 2020-02-23](https://qiita.com/zakiyama2918/items/0329e54ef23978a60574)
   - COTOHA-APIを用いて、独自コード
+- [sonoisa/deep-question-generation: 深層学習を用いたクイズ自動生成（日本語T5モデル）](https://github.com/sonoisa/deep-question-generation)
+  - fork: [morioka/deep-question-generation: 深層学習を用いたクイズ自動生成（日本語T5モデル）](https://github.com/morioka/deep-question-generation)
+  - t5-base-japaneseモデルを質問生成(answer-aware question generation)向けにファインチューニングしたもの
+- [KristiyanVachev/Question-Generation: Generating multiple choice questions from text using Machine Learning.](https://github.com/KristiyanVachev/Question-Generation)
+  - fork: [morioka/Question-Generation: Generating multiple choice questions from text using Machine Learning.](https://github.com/morioka/Question-Generation)
+- [renatoviolin/Multiple-Choice-Question-Generation-T5-and-Text2Text: Question Generation using Google T5 and Text2Text](https://github.com/renatoviolin/Multiple-Choice-Question-Generation-T5-and-Text2Text)
+  - fork:  [morioka/Multiple-Choice-Question-Generation-T5-and-Text2Text: Question Generation using Google T5 and Text2Text](https://github.com/morioka/Multiple-Choice-Question-Generation-T5-and-Text2Text)
+- [patil-suraj/question_generation: Neural question generation using transformers](https://github.com/patil-suraj/question_generation)
+  - fork: [morioka/question_generation: Neural question generation using transformers](https://github.com/morioka/question_generation)
   
 ### 実行例
 
@@ -119,3 +131,6 @@ EOS
 MeCab + CaboCha から spacy/GiNZAに差し替えた。
 本筋の処理には手を入れず、CaboCha出力に合わせるよう努めた。spacy doc の json出力には不足する項目がいくつかあり、適宜追加した。
 
+## memo その3
+
+answerを共通とする質問を2つ作成して、それをつなげるとクイズっぽくなる?
