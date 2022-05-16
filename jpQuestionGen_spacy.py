@@ -12,31 +12,44 @@ import ginza
 from operator import itemgetter
 import copy
 
-def spacy_chunk_parser(doc):
+def spacy_cabocha_chunk_parser(doc):
     # json に落とし込む
     jsonfile=doc.to_json()
-        
-    # 品詞詳細を分解
+
+    # トークンID
     for tok in jsonfile['tokens']:
-        tok['@feature'] = ",".join(tok['tag'].split('-'))
-        del tok['tag']
+        tok['@id'] = str(tok['id'])
 
-    # 読み(reading_form)
+    # 品詞詳細を分解 (品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3)
+    for tok in jsonfile['tokens']:
+        feature = tok['tag']
+        tok['@feature'] = [ feature.split('-')[i] if i < len(feature.split('-')) else '*' for i in range(4)]
+
+    # 活用形, 活用型 (inflection)
     for tok, token in zip(jsonfile['tokens'], doc):
-        tok['#text'] = token.orth_
+        morph = token.morph.to_dict()['Reading']
 
-    # tag (feature) に読み(reading_form)、表層形(surface)、活用 (inflection) を追加
+        try:
+            inflection = token.morph.to_dict()['Inflection'].split(';')[::-1]
+        except:
+            inflection = ['*', '*']
+
+        tok['@feature'] += inflection
+
+    # 原形, 読み, 発音
     for tok, token in zip(jsonfile['tokens'], doc):
         morph = token.morph.to_dict()['Reading']
         lemma = token.lemma_
 
-        # 活用形
-        try:
-            inflection = ",".join(token.morph.to_dict()['Inflection'].split(';')) + ","
-        except:
-            inflection = ""
+        tok['@feature'] += [lemma, morph, morph]
 
-        tok['@feature'] = f"{tok['@feature']},{inflection}{lemma},{morph}"
+    for tok in jsonfile['tokens']:
+        tok['@feature'] = ','.join(tok['@feature'])
+
+
+    # テキスト(reading_form)
+    for tok, token in zip(jsonfile['tokens'], doc):
+        tok['#text'] = token.orth_
 
     # 固有表現
     for tok, token in zip(jsonfile['tokens'], doc):
@@ -70,6 +83,10 @@ def spacy_chunk_parser(doc):
     for chunk, chunk_id, link_id in zip(bunsetu_spans, chunk_id_list, link_id_list):
         chunk['@id'] = str(chunk_id)
         chunk['@link'] = str(link_id)
+        chunk['@rel'] = 'D' # dummy
+        chunk['@score'] = str(-1.0)  # dummy
+        chunk['@head'] = str(0) # dummy
+        chunk['@func'] = str(1) # dummy
         chunk["tok"] = jsonfile['tokens'][chunk['start']:chunk['end']]
 
     ## 互換性を維持する配置
@@ -116,7 +133,8 @@ class QAGeneration:
     def parse(self, doc):
  
         tree = self.spacy_parser(doc)
-        xml_dict = spacy_chunk_parser(tree)
+        #xml_dict = spacy_chunk_parser(tree)
+        xml_dict = spacy_cabocha_chunk_parser(tree)
         return xml_dict, True
 
     def _is_yogen(self, node):
