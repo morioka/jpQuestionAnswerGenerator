@@ -130,7 +130,3 @@ EOS
 
 MeCab + CaboCha から spacy/GiNZAに差し替えた。
 本筋の処理には手を入れず、CaboCha出力に合わせるよう努めた。spacy doc の json出力には不足する項目がいくつかあり、適宜追加した。
-
-## memo その3
-
-answerを共通とする質問を2つ作成して、それをつなげるとクイズっぽくなる?
