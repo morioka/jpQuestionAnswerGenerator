@@ -57,6 +57,8 @@ def spacy_cabocha_chunk_parser(doc):
             tok['@ne'] = f'B-{token.ent_type_}'.upper()
         elif token.ent_iob_ == 'I':
             tok['@ne'] = f'I-{token.ent_type_}'.upper()
+        else:   # 'O'
+            tok['@ne'] = 'O'
 
     # 文節係り受け情報
     ## chunk = 文節とみなす
@@ -162,25 +164,22 @@ class QAGeneration:
         if (bform_tag[0] == u"助詞" and bform_tag[1] == u"格助詞"
             and (bform_surface in set([u"ガ", u"ヲ", u"ニ", u"ト", u"デ", u"カラ", u"ヨリ", u"ヘ", u"マデ"]))):
             
-            try:  # @neが取れないらしい場合に関連して IndexErrorを生じることがある
-                if bhead_tag[1] == u"代名詞" \
-                    or bhead_tag[0] == u"代名詞" \
-                    or (bhead_tag[0] == u"名詞" and bhead_tag[1] == u"接尾"):
-                    # 代名詞加算
-                    return True, "agent"
-                elif bform_surface == u"ニ" and \
-                    (node['ne'][node['bhead']] == u"B-DATE" or \
-                        (bhead_tag[1] == u"接尾" and bhead_tag[-1] == u"ジ")):
-                    #  「９時に」の場合、時は時間の固有名詞として認識されないようなので、featureに「ジ」があれば時間として扱う
-                    # time
-                    return True, "time"
-                elif bform_surface == u"デ" and \
-                    (node['ne'][node['bhead']] == u"B-LOCATION" or bhead_tag[0] == u"名詞"):
-                    # place
-                    return True, "place"
-                else:
-                    return True, bform_surface
-            except IndexError:
+            if bhead_tag[1] == u"代名詞" \
+                or bhead_tag[0] == u"代名詞" \
+                or (bhead_tag[0] == u"名詞" and bhead_tag[1] == u"接尾"):
+                # 代名詞加算
+                return True, "agent"
+            elif bform_surface == u"ニ" and \
+                (node['ne'][node['bhead']] == u"B-DATE" or \
+                    (bhead_tag[1] == u"接尾" and bhead_tag[-1] == u"ジ")):
+                #  「９時に」の場合、時は時間の固有名詞として認識されないようなので、featureに「ジ」があれば時間として扱う
+                # time
+                return True, "time"
+            elif bform_surface == u"デ" and \
+                (node['ne'][node['bhead']] == u"B-LOCATION" or bhead_tag[0] == u"名詞"):
+                # place
+                return True, "place"
+            else:
                 return True, bform_surface
         elif bhead_tag[0] == u"名詞" and bform_tag[0:2] == [u"名詞", u"接尾"]:
             return True, u"名詞接尾"
