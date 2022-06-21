@@ -194,7 +194,7 @@ class QAGeneration:
             if is_yogen:
                 for case_cand in [node_map[child_id] for child_id in node['deps']]:
                     is_case, case = self._is_case(case_cand)
-                    print("is_case, case, yogen:", is_case, case, yogen)
+                    #print("is_case, case, yogen:", is_case, case, yogen)
                     if is_case:
                         # 格（ガ格、ヲ格、ニ格、ト格、デ格、カラ格、ヨリ格、ヘ格、マデ格、無格）＋用言（動詞、形容詞、名詞＋判定詞）形式の文節に意味役割を生成
                         # 全組み合わせに変換対応は難しいが、固定でいくつか対応します。
@@ -336,12 +336,22 @@ class QAGeneration:
 
             self.dependencies = self._merge_dependencies_and_case_meaning(node_map)
 
-            print(node_map)
+            #print(node_map)
 
-            qas += self._agent2what_QA()
-            qas += self._aobject_ha2what_QA()
-            qas += self._time2when_QA()
-            qas += self._place2where_QA()
+            qas += self._agent2what_QA()        # 誰/何が?
+            qas += self._aobject_ha2what_QA()   # 「は」何?
+            qas += self._time2when_QA()         # いつ
+            qas += self._place2where_QA()       # どこ
+
+            # 以降のの各サブルーチンは、下記からの転記 (権利関係は未チェック)
+            # [文書からFAQを自動生成する試み - Qiita](https://qiita.com/yukihon_lab/items/5f494d1a39849071f077)
+            qas += self._object_wo2what_QA()    # 何「を」
+            qas += self._object_ga2what_QA()    # 何「が」
+            qas += self._source2where_QA()      # どこから
+            qas += self._goal_he2where_QA()     # どこ「へ」
+            qas += self._goal_ni2where_QA()     # どこ「に」
+            qas += self._purpose2why_QA()       # なぜ
+
         return qas
 
     def _agent2what_QA(self):
@@ -417,6 +427,131 @@ class QAGeneration:
             #for i in range(len(self.chunkid2text)):
                 if i==target_id:
                     q += '何処で'
+                    a = self._get_subtree_texts(i)
+                elif self._TorF_id_in_subtree_root_id(i,target_id):
+                    continue
+                else:
+                    q += self.chunkid2text[i]
+            q += 'か？'
+            q = q.replace('。','')
+            question_and_answers.append([q,a])
+        return question_and_answers
+
+    def _object_wo2what_QA(self):
+        question_and_answers = list()
+        target_dependencies = [item for item in self.dependencies if item[2] == 'object' \
+                               and self.chunkid2text[item[1]][-1] == 'を']
+        for item in target_dependencies:
+            target_id = item[1]
+            q = ''
+            for i in self.chunkid2text.keys():
+            #for i in range(len(self.chunkid2text)):
+                if i == target_id:
+                    q += '何を'
+                    a = self._get_subtree_texts(i)
+                elif self._TorF_id_in_subtree_root_id(i, target_id):
+                    continue
+                else:
+                    q += self.chunkid2text[i]
+            q += 'か？'
+            q = q.replace('。','')
+            question_and_answers.append([q, a])
+        return question_and_answers
+
+    def _object_ga2what_QA(self):
+        question_and_answers = list()
+        target_dependencies = [item for item in self.dependencies if item[2] == 'object' \
+                               and self.chunkid2text[item[1]][-1] == 'が']
+        for item in target_dependencies:
+            target_id = item[1]
+            q = ''
+            for i in self.chunkid2text.keys():
+            #for i in range(len(self.chunkid2text)):
+                if i == target_id:
+                    q += '何が'
+                    a = self._get_subtree_texts(i)
+                elif self._TorF_id_in_subtree_root_id(i, target_id):
+                    continue
+                else:
+                    q += self.chunkid2text[i]
+            q += 'か？'
+            q = q.replace('。','')
+            question_and_answers.append([q, a])
+        return question_and_answers
+
+    def _source2where_QA(self):
+        question_and_answers = list()
+        target_dependencies = [item for item in self.dependencies if item[2]=='source' \
+                               and self.chunkid2text[item[1]][-2:]=='から']
+        for item in target_dependencies:
+            target_id = item[1]
+            q = ''
+            for i in self.chunkid2text.keys():
+            #for i in range(len(self.chunkid2text)):
+                if i==target_id:
+                    q += '何処から'
+                    a = self._get_subtree_texts(i)
+                elif self._TorF_id_in_subtree_root_id(i,target_id):
+                    continue
+                else:
+                    q += self.chunkid2text[i]
+            q += 'か？'
+            q = q.replace('。','')
+            question_and_answers.append([q,a])
+        return question_and_answers
+
+    def _goal_he2where_QA(self):
+        question_and_answers = list()
+        target_dependencies = [item for item in self.dependencies if item[2]=='goal' \
+                               and self.chunkid2text[item[1]][-1]=='へ']
+        for item in target_dependencies:
+            target_id = item[1]
+            q = ''
+            for i in self.chunkid2text.keys():
+            #for i in range(len(self.chunkid2text)):
+                if i==target_id:
+                    q += '何処へ'
+                    a = self._get_subtree_texts(i)
+                elif self._TorF_id_in_subtree_root_id(i,target_id):
+                    continue
+                else:
+                    q += self.chunkid2text[i]
+            q += 'か？'
+            q = q.replace('。','')
+            question_and_answers.append([q,a])
+        return question_and_answers
+
+    def _goal_ni2where_QA(self):
+        question_and_answers = list()
+        target_dependencies = [item for item in self.dependencies if item[2]=='goal' \
+                               and self.chunkid2text[item[1]][-1]=='に']
+        for item in target_dependencies:
+            target_id = item[1]
+            q = ''
+            for i in self.chunkid2text.keys():
+            #for i in range(len(self.chunkid2text)):
+                if i==target_id:
+                    q += '何に'
+                    a = self._get_subtree_texts(i)
+                elif self._TorF_id_in_subtree_root_id(i,target_id):
+                    continue
+                else:
+                    q += self.chunkid2text[i]
+            q += 'か？'
+            q = q.replace('。','')
+            question_and_answers.append([q,a])
+        return question_and_answers
+
+    def _purpose2why_QA(self):
+        question_and_answers = list()
+        target_dependencies = [item for item in self.dependencies if item[2]=='purpose']
+        for item in target_dependencies:
+            target_id = item[1]
+            q = ''
+            for i in self.chunkid2text.keys():
+            #for i in range(len(self.chunkid2text)):
+                if i==target_id:
+                    q += 'なぜ、'
                     a = self._get_subtree_texts(i)
                 elif self._TorF_id_in_subtree_root_id(i,target_id):
                     continue
